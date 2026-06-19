@@ -19,6 +19,7 @@ Mirror of `~/.claude/skills/daily-report/`.
 | `datacenter_power` | [prompts/datacenter_power.md](prompts/datacenter_power.md) | Gigawatt campuses / PPA / SMR / liquid cooling / capex tracker |
 | `stock_signal` | [prompts/stock_signal.md](prompts/stock_signal.md) | US / HK / KR / TW semis + AI compute event-driven signals |
 | `oss_signal` | [prompts/oss_signal.md](prompts/oss_signal.md) | GitHub trending / HF / arxiv / X / Reddit / Substack early signals |
+| `cxl_hbf_memory` | [prompts/cxl_hbf_memory.md](prompts/cxl_hbf_memory.md) | CXL DDR memory pooling / HBF media physics / KV-Cache tiering / MLSys/ISCA papers |
 | `综合 (composite)` | runs N of the above → [examples/tech_frontier_daily_20260616.md](examples/tech_frontier_daily_20260616.md) | combined frontier daily |
 
 ## Source tiers (pick the lane before drafting)
@@ -44,23 +45,16 @@ Then in Claude Code, say things like:
 - "今天的 AI 软件栈日报"
 - "GitHub 早期信号日报"
 - "数据中心电力日报"
+- "**CXL DDR / HBF 日报**"  ← 新增的第 11 个 topic
 - "综合日报"
 - "/daily-report"
 
 The skill description (see `SKILL.md`) lists all trigger phrases.
 
-### Extension mode: CXL / HBF / NAND deep architecture analysis
-
-This skill also absorbs the former `cxl-agentic-hbf-nand` skill as an **extension mode**.
-When the user asks about Agentic AI memory hierarchy, KV-Cache offloading, HBF/NAND media
-physics, or 5-metric quantitative matrices (IOPS / BW / latency / $/GB / endurance),
-the skill switches to a ~500-line architecture report instead of a daily.
-
-Trigger phrases include: `Agentic AI 内存`, `HBF`, `High-Bandwidth Flash`, `KV Cache 卸载`,
-`PagedAttention 内存`, `Decode Offloading`, `Engram`, `5 指标量化`, `WAF`, `P/E Cycle`,
-`HBM vs HBF vs CXL-DDR`, `MLSys/ISCA/HPCA 存储论文`, `SK Hynix H³`, `Samsung Memory-Semantic SSD`.
-
-Full methodology: [`docs/CXL_HBF_NAND_GUIDE.md`](docs/CXL_HBF_NAND_GUIDE.md).
+> Historical note: this repo also absorbed the former `cxl-agentic-hbf-nand` deep-architecture skill.
+> The original 5-prompt deep-analysis methodology is archived under
+> [`archive/cxl_deep_analysis/`](archive/cxl_deep_analysis/) for reference; day-to-day work goes
+> through the regular daily-report flow via the `cxl_hbf_memory` topic above.
 
 ## Output
 

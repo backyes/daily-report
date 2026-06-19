@@ -8,8 +8,10 @@ on:
     branches:
       - main
     paths:
-      - 'examples/**.md'
-      - 'prompts/**.md'
+      # 只监听仓库根下的 examples/ / prompts/，不要把 archive/ 下的归档文件计入
+      - 'examples/*.md'
+      - 'prompts/*.md'
+      - '!archive/**'
   workflow_dispatch:
     inputs:
       target_file:
