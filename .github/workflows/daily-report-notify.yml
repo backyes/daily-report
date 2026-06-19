@@ -1,0 +1,59 @@
+name: Daily Report Email Notify
+
+# 当 main 分支被 push 到，且改动涉及日报正文 (examples/) 或模板 (prompts/) 时，
+# 提取最新的日报摘要并通过 Gmail SMTP 发送到指定邮箱。
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'examples/**.md'
+      - 'prompts/**.md'
+  workflow_dispatch:
+    # 允许手动触发用于联调
+    inputs:
+      target_file:
+        description: 'examples/ 下要发送的日报文件名 (留空=自动选最新被改动的)'
+        required: false
+        default: ''
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # 需要至少 2 次 commit 才能 git diff HEAD~1
+          fetch-depth: 2
+
+      - name: Build email subject & body
+        id: build
+        env:
+          GH_EVENT_NAME: ${{ github.event_name }}
+          GH_TARGET_FILE: ${{ github.event.inputs.target_file }}
+          GH_REPO: ${{ github.repository }}
+          GH_SHA: ${{ github.sha }}
+          GH_ACTOR: ${{ github.actor }}
+          GH_COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          set -euo pipefail
+          bash .github/scripts/build-summary.sh
+
+      - name: Send email via Gmail SMTP
+        # 仅当上一步成功生成了 body.md（说明确实有日报变化要发）才发送
+        if: steps.build.outputs.has_summary == 'true'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.GMAIL_USERNAME }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          from: "Daily Report Bot <${{ secrets.GMAIL_USERNAME }}>"
+          to: ${{ secrets.MAIL_TO }}
+          subject: ${{ steps.build.outputs.subject }}
+          # 用 markdown 风格正文，dawidd6 会以 text/plain + html 双发
+          convert_markdown: true
+          html_body: file://email_body.md
+          body: file://email_body.md
