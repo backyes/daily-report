@@ -1,10 +1,13 @@
 # Gmail 邮件通知配置指南
 
 每次 push 到 `main` 分支且触动 `examples/**.md` 或 `prompts/**.md` 时，
-GitHub Actions 会通过 Gmail SMTP 把"最新日报的速览章节 + commit 元信息"发到指定邮箱。
+GitHub Actions 会通过 Gmail SMTP 把"最新日报的速览章节 + commit 元信息"渲染成
+**手机/邮件友好的 HTML**（同时附带 markdown 纯文本兜底）发到指定邮箱。
 
 工作流文件：[`.github/workflows/daily-report-notify.yml`](../.github/workflows/daily-report-notify.yml)
 摘要脚本：[`.github/scripts/build-summary.sh`](../.github/scripts/build-summary.sh)
+HTML 渲染器：[`.github/scripts/md_to_mobile_html.py`](../.github/scripts/md_to_mobile_html.py)
+（与用户级 skill `~/.claude/skills/mobile-html-render/md_to_mobile_html.py` 保持同源）
 
 ---
 
@@ -48,7 +51,8 @@ GitHub Actions 会通过 Gmail SMTP 把"最新日报的速览章节 + commit 元
 - Job 全部 ✅；
 - 收件箱收到一封：
   - 标题：`📰 科技前沿日报 | Tech Frontier Daily — 日期：2026年6月16日（星期二）`
-  - 正文：包含"📰 本期速览"那张领域热度表 + commit 链接 + 完整日报链接。
+  - **正文（手机/Gmail 渲染）**：HTML 版——窄屏自动 16px 字号、表格横向滚动、链接蓝色、暗色模式跟随系统
+  - **附件**：`email_body.md` + `email_body.html`，方便归档或转发到 Slack / 微信
 
 ### 3.2 真实 push
 

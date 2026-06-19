@@ -2,6 +2,7 @@ name: Daily Report Email Notify
 
 # 当 main 分支被 push 到，且改动涉及日报正文 (examples/) 或模板 (prompts/) 时，
 # 提取最新的日报摘要并通过 Gmail SMTP 发送到指定邮箱。
+# 邮件正文同时带 HTML（手机 / Gmail 优先渲染）和 markdown 纯文本（兜底）。
 on:
   push:
     branches:
@@ -10,7 +11,6 @@ on:
       - 'examples/**.md'
       - 'prompts/**.md'
   workflow_dispatch:
-    # 允许手动触发用于联调
     inputs:
       target_file:
         description: 'examples/ 下要发送的日报文件名 (留空=自动选最新被改动的)'
@@ -24,10 +24,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # 需要至少 2 次 commit 才能 git diff HEAD~1
           fetch-depth: 2
 
-      - name: Build email subject & body
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install renderer dependencies
+        run: |
+          python3 -m pip install --quiet --upgrade pip
+          python3 -m pip install --quiet markdown
+
+      - name: Build email subject & body (md + html)
         id: build
         env:
           GH_EVENT_NAME: ${{ github.event_name }}
@@ -40,9 +49,9 @@ jobs:
           set -euo pipefail
           bash .github/scripts/build-summary.sh
 
-      - name: Send email via Gmail SMTP
-        # 仅当上一步成功生成了 body.md（说明确实有日报变化要发）才发送
-        if: steps.build.outputs.has_summary == 'true'
+      - name: Send email via Gmail SMTP (HTML + markdown fallback)
+        # 仅当 build 步骤确认要发送时才走这一步
+        if: steps.build.outputs.has_summary == 'true' && steps.build.outputs.body_html != ''
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
@@ -53,7 +62,24 @@ jobs:
           from: "Daily Report Bot <${{ secrets.GMAIL_USERNAME }}>"
           to: ${{ secrets.MAIL_TO }}
           subject: ${{ steps.build.outputs.subject }}
-          # 用 markdown 风格正文，dawidd6 会以 text/plain + html 双发
+          # multipart/alternative：先 text 兜底，再 html 优先渲染
+          html_body: file://email_body.html
+          body: file://email_body.md
+          # 同时把原始 .md / .html 作为附件，方便手机存档
+          attachments: email_body.md,email_body.html
+
+      - name: Send email (markdown-only fallback)
+        # HTML 渲染失败时的降级路径，避免无邮件
+        if: steps.build.outputs.has_summary == 'true' && steps.build.outputs.body_html == ''
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.GMAIL_USERNAME }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          from: "Daily Report Bot <${{ secrets.GMAIL_USERNAME }}>"
+          to: ${{ secrets.MAIL_TO }}
+          subject: ${{ steps.build.outputs.subject }}
           convert_markdown: true
-          html_body: file://email_body.md
           body: file://email_body.md

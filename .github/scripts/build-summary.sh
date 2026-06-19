@@ -2,7 +2,8 @@
 # build-summary.sh
 # ─────────────────────────────────────────────────────────────────────────────
 # 选出"本次 push 想要通知的那份日报"，把它的标题 + 速览表 + 前若干段提取出来，
-# 写到 email_body.md，并把邮件主题通过 GITHUB_OUTPUT 暴露给上游 step。
+# 同时产出 markdown 摘要 (email_body.md) 和 mobile/邮件友好的 HTML (email_body.html)，
+# 把邮件主题通过 GITHUB_OUTPUT 暴露给上游 step。
 #
 # 选取规则（优先级递减）：
 #   1. workflow_dispatch 手动触发且填了 target_file → 直接用
@@ -15,11 +16,16 @@
 #   has_summary  true / false
 #   subject      邮件标题
 #   target_file  实际选中的文件路径（用于日志）
+#   body_md      生成的 markdown 摘要路径
+#   body_html    生成的 HTML 摘要路径（手机/邮件友好）
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
 OUT="${GITHUB_OUTPUT:-/dev/stderr}"
-BODY_FILE="email_body.md"
+BODY_MD="email_body.md"
+BODY_HTML="email_body.html"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RENDERER="${SCRIPT_DIR}/md_to_mobile_html.py"
 
 emit() { echo "$1=$2" >> "$OUT"; }
 
@@ -32,7 +38,6 @@ if [[ "${GH_EVENT_NAME:-}" == "workflow_dispatch" && -n "${GH_TARGET_FILE:-}" ]]
 fi
 
 if [[ -z "$TARGET" ]]; then
-  # 找本次 push 改动的 examples/*.md
   CHANGED=$(git diff --name-only HEAD~1 HEAD -- 'examples/*.md' 2>/dev/null | sort | tail -n 1 || true)
   if [[ -n "$CHANGED" ]]; then
     TARGET="$CHANGED"
@@ -41,7 +46,6 @@ if [[ -z "$TARGET" ]]; then
 fi
 
 if [[ -z "$TARGET" ]]; then
-  # fallback：仓库里现存最新的日报
   TARGET=$(ls examples/*.md 2>/dev/null | sort | tail -n 1 || true)
   if [[ -n "$TARGET" ]]; then
     echo "[build-summary] fallback to newest file in examples/: $TARGET"
@@ -53,17 +57,17 @@ if [[ -z "$TARGET" || ! -f "$TARGET" ]]; then
   emit has_summary false
   emit subject ""
   emit target_file ""
+  emit body_md ""
+  emit body_html ""
   exit 0
 fi
 
 emit target_file "$TARGET"
 
 # 2. 解析标题 + 日期 ------------------------------------------------------------
-# 第一行通常是 `# 科技前沿日报 | Tech Frontier Daily`
 TITLE=$(grep -m1 '^# ' "$TARGET" | sed 's/^#\s*//' || true)
 [[ -z "$TITLE" ]] && TITLE="Daily Report"
 
-# 取日期：先看正文第二行 `**日期：YYYY年M月D日（...）**`，否则从文件名 YYYYMMDD 取
 DATE_LINE=$(grep -m1 -E '^\*\*日期[:：]' "$TARGET" | sed 's/\*\*//g' || true)
 if [[ -z "$DATE_LINE" ]]; then
   STAMP=$(echo "$TARGET" | grep -oE '[0-9]{8}' | head -n1 || true)
@@ -75,9 +79,8 @@ fi
 SUBJECT="📰 ${TITLE} — ${DATE_LINE:-update}"
 emit subject "$SUBJECT"
 
-# 3. 构造邮件正文 ---------------------------------------------------------------
-# 提取 "## 📰 本期速览" 整段（直到下一个 `## ` 或 `---`）作为摘要核心。
-# 若没有这一节，则取文件前 60 行兜底。
+# 3. 构造 markdown 摘要正文 ----------------------------------------------------
+# 优先抽取 "## 📰 本期速览" 整节，否则取前 60 行
 SUMMARY=$(awk '
   /^## .*本期速览/ {flag=1; print; next}
   flag && /^## / {flag=0}
@@ -113,7 +116,30 @@ COMMIT_MSG_FIRST=$(printf '%s' "${GH_COMMIT_MSG:-}" | head -n1)
   echo
   echo "🔗 完整日报：${FILE_URL}"
   echo "🏠 仓库：${REPO_URL}"
-} > "$BODY_FILE"
+} > "$BODY_MD"
 
+echo "[build-summary] wrote $BODY_MD ($(wc -l < "$BODY_MD") lines)"
+
+# 4. 渲染 HTML 版本（手机 / 邮件客户端友好） ----------------------------------
+# 调用 vendored 的 mobile-html renderer。CI 上需要 python-markdown，
+# 工作流里已经安装。失败时降级为只发 markdown，不让 push 报错。
+if [[ -x "$RENDERER" || -f "$RENDERER" ]]; then
+  META_HTML="📂 来源：<a href=\"${FILE_URL}\"><code>${TARGET}</code></a> · 🔁 提交：<a href=\"${COMMIT_URL}\"><code>${SHORT_SHA}</code></a> by <strong>${GH_ACTOR:-unknown}</strong>"
+  FOOTER_HTML="🔗 <a href=\"${FILE_URL}\">完整日报</a> · 🏠 <a href=\"${REPO_URL}\">${GH_REPO}</a>"
+  if python3 "$RENDERER" "$BODY_MD" -o "$BODY_HTML" \
+       --title "$SUBJECT" \
+       --meta "$META_HTML" \
+       --footer "$FOOTER_HTML"; then
+    echo "[build-summary] wrote $BODY_HTML ($(wc -c < "$BODY_HTML") bytes)"
+    emit body_html "$BODY_HTML"
+  else
+    echo "[build-summary] HTML render failed, falling back to markdown-only" >&2
+    emit body_html ""
+  fi
+else
+  echo "[build-summary] renderer not found at $RENDERER, skipping HTML" >&2
+  emit body_html ""
+fi
+
+emit body_md "$BODY_MD"
 emit has_summary true
-echo "[build-summary] wrote $BODY_FILE ($(wc -l < "$BODY_FILE") lines)"

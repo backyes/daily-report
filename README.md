@@ -51,8 +51,23 @@ The skill description (see `SKILL.md`) lists all trigger phrases.
 
 ## Output
 
-Written to `~/work/claude_workspace/daily_report/output/<topic>_<YYYYMMDD>.md`
-(or `tech_frontier_daily_<YYYYMMDD>.md` for the composite report).
+Each report is written **in two formats** to `~/work/claude_workspace/daily_report/output/`:
+
+- `<topic>_<YYYYMMDD>.md` — Markdown source, ideal for GitHub / editors
+- `<topic>_<YYYYMMDD>.html` — Self-contained mobile- & email-friendly HTML
+  (inline CSS, viewport set, scrollable tables, dark-mode aware), produced via the
+  [`mobile-html-render`](https://github.com/backyes/daily_report_skills/tree/main/.github/scripts/md_to_mobile_html.py)
+  user-level skill at `~/.claude/skills/mobile-html-render/`.
+
+Composite reports use `tech_frontier_daily_<YYYYMMDD>.{md,html}`.
+
+## GitHub push → Gmail notification
+
+Pushing a new daily report to `main` triggers
+[`.github/workflows/daily-report-notify.yml`](.github/workflows/daily-report-notify.yml),
+which extracts the "📰 本期速览" section, renders it as mobile-friendly HTML, and emails
+it via Gmail SMTP. Setup steps and required secrets are in
+[`docs/EMAIL_NOTIFY_SETUP.md`](docs/EMAIL_NOTIFY_SETUP.md).
 
 ## Hard rules baked into the skill
 
