@@ -49,6 +49,19 @@ Then in Claude Code, say things like:
 
 The skill description (see `SKILL.md`) lists all trigger phrases.
 
+### Extension mode: CXL / HBF / NAND deep architecture analysis
+
+This skill also absorbs the former `cxl-agentic-hbf-nand` skill as an **extension mode**.
+When the user asks about Agentic AI memory hierarchy, KV-Cache offloading, HBF/NAND media
+physics, or 5-metric quantitative matrices (IOPS / BW / latency / $/GB / endurance),
+the skill switches to a ~500-line architecture report instead of a daily.
+
+Trigger phrases include: `Agentic AI 内存`, `HBF`, `High-Bandwidth Flash`, `KV Cache 卸载`,
+`PagedAttention 内存`, `Decode Offloading`, `Engram`, `5 指标量化`, `WAF`, `P/E Cycle`,
+`HBM vs HBF vs CXL-DDR`, `MLSys/ISCA/HPCA 存储论文`, `SK Hynix H³`, `Samsung Memory-Semantic SSD`.
+
+Full methodology: [`docs/CXL_HBF_NAND_GUIDE.md`](docs/CXL_HBF_NAND_GUIDE.md).
+
 ## Output
 
 Each report is written **in two formats** to `~/work/claude_workspace/daily_report/output/`:

@@ -5,6 +5,13 @@ description: 半导体 / AI Infra / AI Compiler / 互联网络 / 半导体股票
   "AI 软件栈日报"、"AI 算法日报"、"AI 应用日报"、"芯片日报"、"半导体日报"、"互联网络日报"、"超节点日报"、
   "半导体股票日报"、"数据中心电力日报"、"AI 算力链 signal"、"GitHub 早期信号"、"科技前沿日报"时使用此技能。
   所有模板都强调"取证依据 + 链接出处 + 量化数字 + 战略判断"，输出面向 AI Infra 架构师 / 研发负责人 / 投研团队 / Agent 产品 PM。
+
+  扩展模式（CXL/HBF/NAND 深度架构分析）：当用户提到 "Agentic AI 内存"、"HBF"、"High-Bandwidth Flash"、
+  "NAND Flash"、"内存层级"、"存储层级"、"KV Cache 卸载"、"PagedAttention 内存"、"Decode Offloading"、
+  "Engram"、"Embedding 存储"、"CXL.mem"、"NUMA 延迟"、"WAF"、"P/E Cycle"、"5 指标量化"、"IOPS 建模"、
+  "耐久度建模"、"HBM vs HBF vs CXL-DDR"、"KV Cache 卸载方案对比"、"MLSys/ISCA/HPCA 存储论文"、
+  "SK Hynix H³"、"Samsung Memory-Semantic SSD"、"Kioxia XL-Flash" 时切换到深度架构分析模式
+  （参见 docs/CXL_HBF_NAND_GUIDE.md），输出 ~500 行的 5 指标矩阵报告而非日报。
 ---
 
 # Daily Report Skill (前沿技术情报日报生成器)
@@ -156,21 +163,65 @@ python3 ~/.claude/skills/mobile-html-render/md_to_mobile_html.py <md> -o <html>
 
 ```
 ~/.claude/skills/daily-report/
-├── SKILL.md                              # 本文件
+├── SKILL.md                              # 本文件（日报 + cxl 扩展模式入口）
+├── docs/
+│   ├── CXL_HBF_NAND_GUIDE.md             # 扩展模式：完整方法论 + 工作流 + 已知陷阱
+│   └── EMAIL_NOTIFY_SETUP.md             # GitHub push → Gmail 通知配置
 ├── prompts/
-│   ├── ai_compiler.md
-│   ├── ai_infra.md
-│   ├── ai_software.md
-│   ├── ai_algorithm.md
-│   ├── ai_application.md
-│   ├── chip_bus.md
-│   ├── interconnect.md
-│   ├── datacenter_power.md
-│   ├── stock_signal.md
-│   └── oss_signal.md
+│   ├── ai_compiler.md / ai_infra.md / ai_software.md / ai_algorithm.md
+│   ├── ai_application.md / chip_bus.md / interconnect.md
+│   ├── datacenter_power.md / stock_signal.md / oss_signal.md       # 10 个日报主题
+│   ├── cxl_workload_driven_analysis.md          # ↓ 扩展模式（cxl/hbf/nand）
+│   ├── cxl_memory_hierarchy.md
+│   ├── cxl_hbf_nand_deep_dive.md
+│   ├── cxl_academic_paper_mapping.md
+│   └── cxl_cross_workload_synthesis.md
+├── templates/
+│   └── analysis_report_template.md       # 11 节深度报告模板（扩展模式专用）
+├── scripts/
+│   └── quantify_5metrics.py              # 5 指标量化辅助脚本（扩展模式专用）
 └── examples/
-    └── tech_frontier_daily_20260616.md   # 综合日报参考样式
+    ├── tech_frontier_daily_20260616.md   # 日报样例
+    ├── agentic_ai_memory_hierarchy_overview.md  # ↓ 扩展模式样例
+    ├── cxl_vs_hbf_vs_nand_5metric_matrix.md
+    ├── kv_cache_offloading_cxl_pooling.md
+    └── paper_synthesis_memory_hierarchy.md
 ```
+
+## 扩展模式：CXL / HBF / NAND 深度架构分析
+
+当用户的提问围绕 "Agentic AI 内存层级 / KV Cache 卸载 / HBF / NAND / 5 指标量化矩阵 /
+MLSys-ISCA-HPCA 存储论文" 等关键词时，**不是出日报**，而是切换到一份 ~500 行的
+深度技术架构报告——**[完整方法论参见 `docs/CXL_HBF_NAND_GUIDE.md`](docs/CXL_HBF_NAND_GUIDE.md)**。
+
+紧凑速查（详细工作流、强制规则、已知陷阱见 GUIDE）：
+
+| 项 | 入口 |
+|---|---|
+| 工作负载驱动分析 | `prompts/cxl_workload_driven_analysis.md` |
+| CXL 内存层级 | `prompts/cxl_memory_hierarchy.md` |
+| HBF/NAND 介质物理层深挖 | `prompts/cxl_hbf_nand_deep_dive.md` |
+| MLSys/ISCA/HPCA 论文映射 | `prompts/cxl_academic_paper_mapping.md` |
+| 跨工作负载横向主线 | `prompts/cxl_cross_workload_synthesis.md` |
+| 11 节深度报告模板 | `templates/analysis_report_template.md` |
+| 5 指标量化辅助脚本 | `scripts/quantify_5metrics.py` |
+
+**核心方法论**：工作负载驱动设计 → 5 指标量化矩阵（IOPS / 带宽 / 延迟 / 成本 / 耐久度）
+→ 介质物理层深挖（Plane / Channel / DMA / P/E Cycle / WAF）→ 学术论文映射 → 2026 硬件落地。
+
+**与日报的产出区别**：
+
+|  | 日报模式 | 扩展模式（cxl-hbf-nand） |
+|---|---|---|
+| 触发词 | "日报"、"signal" | "Agentic AI 内存"、"HBF"、"5 指标"、"KV Cache 卸载" |
+| 输出长度 | 中（每节 100-300 字） | 长（~500 行 / ~30 KB） |
+| 输出文件名 | `<topic>_<YYYYMMDD>.{md,html}` | `cxl_hbf_nand_<topic>_<YYYYMMDD>.{md,html}` |
+| 必填项 | 量化数字 + 取证链接 | 5 指标矩阵 + 论文页码 + 介质物理参数 |
+| 时间视角 | 6-24 个月 | 物理介质代际（HBM3e → HBM4 → HBM4E、TLC → QLC → HBF） |
+
+> 边界提醒：扩展模式**不**负责 CXL Switch/Fabric 拓扑选型 / Marvell Structera 芯片架构 /
+> 内存控制器 IP 设计 / 供应商博弈——这些由 `superchip-analyzer` skill 主导。
+> 详见 [`docs/CXL_HBF_NAND_GUIDE.md`](docs/CXL_HBF_NAND_GUIDE.md) 顶部的 superchip-analyzer 边界说明。
 
 ## 可选：升级为 multi-agent 工作流
 
